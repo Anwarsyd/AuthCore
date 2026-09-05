@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.auth.tokens import default_token_generator
 from django.db import models
 
 

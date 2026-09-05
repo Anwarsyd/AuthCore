@@ -5,12 +5,21 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import RegisterSerializer, ChangePasswordSerializer, ProfileUpdateSerializer
+from .serializers import RegisterSerializer, ChangePasswordSerializer, ProfileUpdateSerializer, LoginSerializer
 
 from rest_framework.permissions import IsAuthenticated
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
+
+from .models import User
+from django.contrib.auth.tokens import default_token_generator
+
+# send verification email 
+from django.core.mail import send_mail
+from django.urls import reverse
+
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 class RegisterView(APIView):
 
@@ -20,6 +29,9 @@ class RegisterView(APIView):
 
         if serializer.is_valid():
             user = serializer.save()
+            
+            # for seding email verfication
+            send_verification_email(user)
 
             return Response(
                 {
@@ -136,3 +148,77 @@ class ProfileUpdateView(APIView):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+        
+class VerifyEmailView(APIView):
+
+    def get(self, request, user_id, token):
+
+        print("TOKEN RECEIVED:", token)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Invalid verification link"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        print("USER:", user.email)
+        print("IS VERIFIED:", user.is_verified)
+        print("TOKEN VALID:", default_token_generator.check_token(user, token))
+
+        if user.is_verified:
+            return Response(
+                {"message": "Email already verified"},
+                status=status.HTTP_200_OK
+            )
+
+        if default_token_generator.check_token(user, token):
+
+            user.is_verified = True
+            user.save(update_fields=["is_verified"])
+
+            return Response(
+                {"message": "Email verified successfully"},
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            {"error": "Invalid or expired verification link"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+        
+def send_verification_email(user):
+
+    token = default_token_generator.make_token(user)
+
+    verification_url = (
+        "http://127.0.0.1:8000"
+        + reverse(
+            "verify_email",
+            kwargs={
+                "user_id": user.id,
+                "token": token,
+            }
+        )
+    )
+
+    print("\n========================================")
+    print("VERIFICATION URL:")
+    print(verification_url)
+    print("========================================\n")
+
+    send_mail(
+        subject="Verify your AuthCore account",
+        message=(
+            f"Hello {user.first_name},\n\n"
+            "Please verify your email address by clicking the link below:\n\n"
+            f"{verification_url}\n\n"
+            "If you did not create this account, you can ignore this email."
+        ),
+        from_email="noreply@authcore.com",
+        recipient_list=[user.email],
+    )
+    
+class LoginView(TokenObtainPairView):
+    serializer_class = LoginSerializer
