@@ -117,12 +117,12 @@ class ChangePasswordView(APIView):
             
             refresh_token = request.data.get("refresh")
 
-        if refresh_token:
-            try:
-                token = RefreshToken(refresh_token)
-                token.blacklist()
-            except Exception:
-                pass
+            if refresh_token:
+                try:
+                    token = RefreshToken(refresh_token)
+                    token.blacklist()
+                except Exception:
+                    pass
 
             return Response(
                 {"message": "Password changed successfully"},
