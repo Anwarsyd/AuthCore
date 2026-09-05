@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import RegisterSerializer, ChangePasswordSerializer, ProfileUpdateSerializer, LoginSerializer
+from .serializers import RegisterSerializer, ChangePasswordSerializer, ProfileUpdateSerializer, LoginSerializer, ForgotPasswordSerializer,ResetPasswordSerializer
 
 from rest_framework.permissions import IsAuthenticated
 
@@ -222,3 +222,108 @@ def send_verification_email(user):
     
 class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
+    
+class ForgotPasswordView(APIView):
+
+    def post(self, request):
+
+        serializer = ForgotPasswordSerializer(
+            data=request.data
+        )
+
+        if serializer.is_valid():
+
+            email = serializer.validated_data["email"]
+
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response(
+                    {
+                        "message": "If an account exists with this email, a password reset link has been sent."
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+            token = default_token_generator.make_token(user)
+
+            reset_url = (
+                "http://127.0.0.1:8000"
+                + reverse(
+                    "reset_password",
+                    kwargs={
+                        "user_id": user.id,
+                        "token": token,
+                    },
+                )
+            )
+
+            print("\n========================================")
+            print("PASSWORD RESET URL:")
+            print(reset_url)
+            print("========================================\n")
+
+            send_mail(
+                subject="Reset your AuthCore password",
+                message=(
+                    f"Hello {user.first_name},\n\n"
+                    "You requested a password reset.\n\n"
+                    f"Reset your password using this link:\n\n"
+                    f"{reset_url}\n\n"
+                    "If you did not request this, you can ignore this email."
+                ),
+                from_email="noreply@authcore.com",
+                recipient_list=[user.email],
+            )
+
+            return Response(
+                {
+                    "message": "If an account exists with this email, a password reset link has been sent."
+                },
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+        
+class ResetPasswordView(APIView):
+
+    def post(self, request, user_id, token):
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Invalid password reset link"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not default_token_generator.check_token(user, token):
+            return Response(
+                {"error": "Invalid or expired password reset link"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = ResetPasswordSerializer(
+            data=request.data
+        )
+
+        if serializer.is_valid():
+
+            user.set_password(
+                serializer.validated_data["new_password"]
+            )
+
+            user.save()
+
+            return Response(
+                {"message": "Password reset successfully"},
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
