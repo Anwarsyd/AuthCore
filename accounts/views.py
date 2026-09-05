@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import RegisterSerializer, ChangePasswordSerializer, ProfileUpdateSerializer, LoginSerializer, ForgotPasswordSerializer,ResetPasswordSerializer
+from .serializers import RegisterSerializer, ChangePasswordSerializer, ProfileUpdateSerializer, LoginSerializer, ForgotPasswordSerializer,ResetPasswordSerializer,ResendVerificationSerializer
 
 from rest_framework.permissions import IsAuthenticated
 
@@ -320,6 +320,50 @@ class ResetPasswordView(APIView):
 
             return Response(
                 {"message": "Password reset successfully"},
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+        
+class ResendVerificationView(APIView):
+
+    def post(self, request):
+
+        serializer = ResendVerificationSerializer(
+            data=request.data
+        )
+
+        if serializer.is_valid():
+
+            email = serializer.validated_data["email"]
+
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response(
+                    {
+                        "message": "If an account exists with this email, a verification link has been sent."
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+            if user.is_verified:
+                return Response(
+                    {
+                        "message": "Email is already verified."
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+            send_verification_email(user)
+
+            return Response(
+                {
+                    "message": "If an account exists with this email, a verification link has been sent."
+                },
                 status=status.HTTP_200_OK
             )
 
