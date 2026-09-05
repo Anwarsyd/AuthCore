@@ -21,6 +21,8 @@ from django.urls import reverse
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from rest_framework_simplejwt.tokens import RefreshToken
+
 class RegisterView(APIView):
 
     def post(self, request):
@@ -108,8 +110,19 @@ class ChangePasswordView(APIView):
             user.set_password(
                 serializer.validated_data["new_password"]
             )
+            
+            user.token_version += 1
 
             user.save()
+            
+            refresh_token = request.data.get("refresh")
+
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception:
+                pass
 
             return Response(
                 {"message": "Password changed successfully"},

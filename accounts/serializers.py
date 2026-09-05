@@ -4,6 +4,8 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import User
 
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 
 class RegisterSerializer(serializers.ModelSerializer):
 
@@ -67,6 +69,14 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         ]
         
 class LoginSerializer(TokenObtainPairSerializer):
+    
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        token["token_version"] = user.token_version
+
+        return token
 
     def validate(self, attrs):
         data = super().validate(attrs)
