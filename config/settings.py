@@ -145,9 +145,19 @@ REST_FRAMEWORK = {
 
 from datetime import timedelta
 
+# SIMPLE_JWT = {
+#     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+#     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+# }
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+
+# after resend email verification - Enable Refresh Token Rotation
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-}
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+}
