@@ -11,6 +11,8 @@ from rest_framework.permissions import IsAuthenticated
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from rest_framework_simplejwt.exceptions import TokenError
+
 
 from .models import User
 from django.contrib.auth.tokens import default_token_generator
@@ -88,7 +90,7 @@ class LogoutView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        except Exception:
+        except TokenError:
             return Response(
                 {"error": "Invalid refresh token"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -121,7 +123,7 @@ class ChangePasswordView(APIView):
                 try:
                     token = RefreshToken(refresh_token)
                     token.blacklist()
-                except Exception:
+                except TokenError:
                     pass
 
             return Response(
@@ -166,7 +168,6 @@ class VerifyEmailView(APIView):
 
     def get(self, request, user_id, token):
 
-        print("TOKEN RECEIVED:", token)
 
         try:
             user = User.objects.get(id=user_id)
